@@ -1,0 +1,2 @@
+type typeProg = unit;;
+
