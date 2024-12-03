@@ -1,20 +1,38 @@
-open Parsing;;
+open Parsing
+open MiniooDeclarations
+open MiniooMENHIR
+
+let usage_msg = "Usage: ./parser [-v | -verbose]"
+
+let anon_arg_handler _ = () (* Ignore anonymous arguments *)
 
 let verbose = ref false
-Arg.parse 
-[("-v", Arg.Set verbose, "Output AST"),
-("-verbose", Arg.Set verbose, "Output AST")]
 
-try lexbuf = Lexing.from_channel stdin in
+let options = [("-v", Arg.Set verbose, "Output AST");("-verbose", Arg.Set verbose, "Output AST")]
+
+let () = Arg.parse options anon_arg_handler usage_msg;;
+
+print_endline (Printf.sprintf "minioo (Verbose = %b)" !verbose ) ;
+
+try
+  let lexbuf = Lexing.from_channel stdin in
   while true do
-    let ast =  miniOOMENHIR.prog miniooLEX.token lexbuf in
-      if verbose then (print_ast ast; print_state())
-      
-  with miniOOMENHIR.Error ->
-    (print_string "Syntax error ..." ; print_newline ()) ;
-    clear_parser ()
+    print_string "moo# ";
+    flush stdout;
+    let () = 
+      try
+        let commands =  MiniooMENHIR.prog MiniooLEX.token lexbuf in 
+        if !verbose then print_endline (pretty_print_cmds commands)
+      with
+      MiniooLEX.TokenError c -> 
+        Printf.fprintf stderr "Invalid Token: %c\n" c;
+      | MiniooMENHIR.Error -> 
+        let pos = Lexing.lexeme_start lexbuf in Printf.fprintf stderr "Syntax error at: %d\n" pos;
+    in ()
+    Lexing.flush_input lexbuf;
+    flush stderr;
+    clear_parser()
   done
-with miniOOLEX.Eof ->
-  print_state()
-  ()
+with MiniooLEX.Eof ->
+  print_endline "End of File"
 ;;
