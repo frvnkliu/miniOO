@@ -22,15 +22,17 @@ try
     let () = 
       try
         let commands =  MiniooMENHIR.prog MiniooLEX.token lexbuf in 
-        if !verbose then print_endline (pretty_print_cmds commands)
+        if !verbose then print_endline (pretty_print_cmds "" commands)
       with
       MiniooLEX.TokenError c -> 
         Printf.fprintf stderr "Invalid Token: %c\n" c;
+        flush stderr;
+        Lexing.flush_input lexbuf
       | MiniooMENHIR.Error -> 
         let pos = Lexing.lexeme_start lexbuf in Printf.fprintf stderr "Syntax error at: %d\n" pos;
+        flush stderr;
+        Lexing.flush_input lexbuf
     in
-    Lexing.flush_input lexbuf;
-    flush stderr;
     clear_parser()
   done
 with MiniooLEX.Eof ->
