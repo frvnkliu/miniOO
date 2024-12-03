@@ -28,7 +28,7 @@ try
         Printf.fprintf stderr "Invalid Token: %c\n" c;
       | MiniooMENHIR.Error -> 
         let pos = Lexing.lexeme_start lexbuf in Printf.fprintf stderr "Syntax error at: %d\n" pos;
-    in ()
+    in
     Lexing.flush_input lexbuf;
     flush stderr;
     clear_parser()

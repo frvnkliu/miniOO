@@ -35,7 +35,7 @@ let rec pretty_print_expr = function
   | Null -> "NULL"
   | Variable name -> Printf.sprintf "Variable(%s)" name
   | FieldAccess (e1, e2) -> Printf.sprintf "FieldAccess(%s, %s)" (pretty_print_expr e1) (pretty_print_expr e2)
-  | Proc (name, command) -> Printf.sprintf "Proc(%s, %s)" name (pretty_print_cmd command)
+  | Proc (name, command) -> Printf.sprintf "Proc(Param(%s), %s)" name (pretty_print_cmd command)
 
 and pretty_print_bool_expr = function
   | Bool b -> Printf.sprintf "Bool(%b)" b
@@ -57,7 +57,7 @@ and pretty_print_cmd = function
 
 and pretty_print_cmds commands =
   let command_strings = List.map pretty_print_cmd commands in
-  Printf.sprintf "Commands[%s]" (String.concat ", " command_strings)
+  Printf.sprintf "Commands[\n %s\n]" (String.concat ",\n " command_strings)
 (*
 let rec pprrint_expr = function
   | Num(i) -> sprintf "Num(%d)" I
