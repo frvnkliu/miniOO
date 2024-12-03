@@ -6,7 +6,7 @@ all: delete
 	echo "# Parser specification:"
 	cat miniooMENHIR.mly
 	echo "# Parser creation:"
-	menhir miniooMENHIR.mly
+	menhir --explain miniooMENHIR.mly
 
 delete:
 	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~

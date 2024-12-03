@@ -2,6 +2,10 @@
 	open miniooMENHIR
 	exception EoF
 }
+
+let letter = ['a'-'z'] | ['A'-'Z']
+let digit = ['0'-'9']
+
 rule token = parse
     [' ' '\t'] { token lexbuf } (* skip blanks and tabs *)
   | ['\n' ]    { EOL }
@@ -12,14 +16,16 @@ rule token = parse
   | "then"     { THEN }
   | "else"     { ELSE }
   | "while"    { WHILE }
-  | "var"	   { VAR }
+  | "var"	     { VAR }
   | "atom"     { ATOM }
   | "null"     { NULL }
   | "proc"     { PROC }
   | "malloc"   { MALLOC }
-  | (['a'-'z'] | ['A'-'Z'])(['a'-'z'] | ['A'-'Z'] | ['0'-'9'])* as idt
+  | ['A'-'Z'](letter|digit)* as idt
                { IDENT idt }
-  | ['0'-'9']+ as num
+  | ['a'-'z'](letter|digit)* as idt
+               { FIELD idt }
+  | digit+ as num
                { NUM (int_of_string num) }
   | ';'        { SEMICOLON }
   | "|||"	   { PARALLEL }
