@@ -10,8 +10,7 @@ rule token = parse
     [' ' '\t'] { token lexbuf } (* skip blanks and tabs *)
   | ['\n' ]    { EOL }
   | "skip"     { SKIP }
-  | "true"     { TRUE }
-  | "false"    { FALSE }
+  | "true" | "false" as b { BOOL(bool_of_string b)}
   | "if"       { IF }
   | "then"     { THEN }
   | "else"     { ELSE }

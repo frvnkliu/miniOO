@@ -8,7 +8,6 @@ open state
 /* lexer tokens */
 %token EOL SEMICOLON ASSIGN MALLOC
 %token SKIP IF ELSE THEN WHILE
-%token TRUE FALSE
 %token VAR
 %token ATOM NULL PROC PARALLEL
 %token LESSTHAN LEQUALS
@@ -16,83 +15,55 @@ open state
 %token LPAREN RPAREN LBRACKET RBRACKET
 %token < string > VARIABLE, FIELD
 %token < int > NUM
+%token < bool > BOOL
 
 %start prog                   /* the entry point */
-%type <unit> prog  
-
-%type <unit> field
-%type <unit> cmds
-%type <unit> cmd
-%type <unit> bool
-%type <unit> declaration
-%type <unit> varassign
-%type <unit> fieldassign
-%type <unit> malloc
+%type <cmds> prog  
+%type <cmds> cmds
+%type <cmd> cmd
+%type <bool> bool_expr
 %type <unit> expr
-%type <unit> proc
 
-%nonassoc ASSIGN
+%right ASSIGN
 %left MINUS          /* lowest precedence  */
+%left DOT
 
 %% /* rules */
 prog :
     cmds EOL    { cmds}
 	
 cmds :
-    c = cmd SEMICOLON l = cmds                      { (CCmds(c, l)) }
-    | c = cmd                                       { (c) }
-    | LBRACKET cmds PARALLEL cmds RBRACKET          { () }
-    | ATOM LPAREN c = cmds RPAREN                   { () }
-    | SKIP                                          { () }
-    | LBRACKET cmds RBRACKET                        { () }
-    /* Sequential Control */
-    | WHILE b = bool c = cmds                       { () }
-    | IF b = bool THEN c1 = cmds ELSE c2 = cmds     { () }
-    | IF b = bool c = cmds                          { () }
+    c = cmd SEMICOLON cs = cmds                             { (c :: cs) }
+    | c = cmd                                               { ([c]) }
   
 cmd :
-      d = declaration           { (d) }
-    | c = varassign             { (c) }
-    | m = malloc                { (m) }
-    | f = expr LPAREN e = expr RPAREN   { Fun(f, e) } 
-    | f = fieldassign           { (f) }
-    | e = expr                  { (e) }
+    VAR x = VARIABLE                        { VarDecl(x) }
+    | f = expr LPAREN e = expr RPAREN       { ProcCall(f, e) } 
+     /* Combined var assign and field assign */
+    | x = expr ASSIGN e = expr              { AssignVal(x, e) }
+    | MALLOC LPAREN x = VARIABLE RPAREN     { Malloc(x) }
+    /* Sequential Control */
+    | SKIP                                  { Skip }
+    | LBRACKET c = cmds RBRACKET            { Sequence(c) }
+    | WHILE b = bool_expr c = cmd                        { While(b, c) }
+    | IF b = bool_expr THEN c1 = cmd ELSE c2 = cmd       { IfElse(b, c1, c2) }
+    | IF b = bool_expr c = cmd                           { If(b, c) }
+    | LBRACKET c1 = cmd PARALLEL c2 = cmd RBRACKET  { Parallel(c1, c2) }
+    | ATOM LPAREN c = cmds RPAREN           { Atom(c) }
 
-bool :
-	TRUE                             { Bool(true) }
-	| FALSE                            { Bool(false) }
-	| e1 = expr LEQUALS e2 = expr      { BEquals(e1, e2) }
-	| e1 = expr LESSTHAN e2 = expr     { BLessthan(e1, e2) }
+
+bool_expr :
+	b = BOOL                        { Bool (b) }                                   
+	| e1 = expr LEQUALS e2 = expr   { Equals(e1, e2) }
+	| e1 = expr LESSTHAN e2 = expr  { Lessthan(e1, e2) }
 
 expr:
-    f = field       { () }
-    | x = VARIABLE       { (x) }
-    | v = NUM         { (Num(v)) }
-    | n = NULL        { () }
-    /* Arithmetic */
-    | e1 = expr MINUS e2 = expr       { (Minus(e1, e2)) }
-    | p = proc                        { (p) }
-
-proc:
-    PROC VARIABLE ASSIGN expr            { () }
-
-malloc: 
-    MALLOC LPAREN x = VARIABLE RPAREN    { Malloc(x) }
-
-declaration:
-    VAR x = VARIABLE                     { VarDecl(x) }
-
-field:
-    f = field DOT id = VARIABLE          { Ffield(f, id) } 
-    | id1 = VARIABLE DOT id2 = VARIABLE     { Field(id1, id2) } 
-
-assign:
-    x = expr ASSIGN e =expr {AssignVal(x, e)}
-
-varassign :
-    id = VARIABLE ASSIGN e = expr           { VarAssign(id, expr) }
+    f = FIELD                               { Field(f) }
+    | n = NUM                               { Num(n) }
+    | e1 = expr MINUS e2 = expr             { Minus(e1, e2) }
+    | NULL                                  { Null }
+    | x = VARIABLE                          { Variable(x) }
+    | e1 = expr DOT e2 = expr               { FieldAccess(e1, e2) }
+    | PROC x = VARIABLE ASSIGN c = cmd      { Proc(x, c) }
     
-fieldassign :
-    e1 = expr DOT e2 =expr ASSIGN e3 = expr        { (FieldAssign(e1, e2, e3)) }
-
 %% (* trailer *)
