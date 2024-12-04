@@ -7,9 +7,15 @@ exception TransitionError of string
 (*Why did I do this so late*)
 
 (* Sets a field in the heap at a given location *)
-let setField heap l field value = 
+let set_field heap l field value = 
   let table = Array.get !heap l in
   Hashtbl.replace table field value
+
+let get_field heap l field =
+  let table = Array.get !heap l in
+  match Hashtbl.find_opt table field with
+  | Some value -> value
+  | None -> VNull
 
 (* Finds, reserves, and returns a currently unused location *)
 let allocate_location heap = 
@@ -18,51 +24,102 @@ let allocate_location heap =
   l
 
 (* Declares a variable by allocating a location and updating the stack *)
-let declareVar name stack heap = 
+let declare_var stack heap name = 
   let l = allocate_location heap in
-  setField heap l "val" VNull;
+  set_field heap l "val" VNull;
   Hashtbl.replace stack name l
 
-(* Evaluates expressions *)
-let rec eval_expr stack heap = function
+let get_var_val stack heap name  =
+  let l = Hashtbl.find stack name(*Guaranteed to be in our stack given staticSemantics checking*)
+  in get_field heap l "val"
+
+let set_var_val stack heap name value =
+  let l = Hashtbl.find stack name(*Guaranteed to be in our stack given staticSemantics checking*)
+  in set_field heap l "val" value;
+  print_endline (Printf.sprintf "val %s = %s" name (pretty_print_tainted_value value))
+
+(* creates a new Object by allocation a location and updating the stack *)
+let mallocVar name stack heap = Hashtbl.replace stack name (allocate_location heap)
+
+(* Get Field parent location*)
+
+(* Evaluates expressions: Returns Tainted Value *)
+let rec eval_loc_expr stack heap = function
+  | Variable name -> VLoc(Hashtbl.find stack name) (* Guaranteed to be in our stack given staticSemantics checking *)
+  | expr ->
+    (match eval_expr stack heap expr with
+      | VLoc loc -> VLoc(loc)
+      | v -> raise (TransitionError (Printf.sprintf"Invalid Object %s"(pretty_print_tainted_value v)) )
+    )
+
+and eval_expr stack heap = function
   | Field name -> VField name
   | Num value -> VInt value
   | Minus (e1, e2) ->
       (match eval_expr stack heap e1, eval_expr stack heap e2 with
        | VInt v1, VInt v2 -> VInt (v1 - v2)
-       | _ -> Error "Minus: Operands must be integers")
+       | _ -> raise (TransitionError  "Minus: Operands must be integers")
+      )
   | Null -> VNull
-  | Variable name ->
-      (try
-         let loc = Hashtbl.find stack name in
-         let table = Array.get !heap loc in
-         Hashtbl.find table "val"
-       with Not_found -> Error ("Variable " ^ name ^ " not found"))
-  | FieldAccess (e1, e2) -> Error "FieldAccess not implemented"
-  | Proc (name, command) -> Error "Proc not implemented"
+  | Variable name -> get_var_val stack heap name
+  | FieldAccess (e1, e2) -> 
+    (match eval_loc_expr stack heap e1, eval_expr stack heap e2 with
+     |VLoc l, VField y -> get_field heap l y
+     | _ -> raise (TransitionError  "Field Access: Invalid")
+    )
+     (*Should return loc of parent and field ideally*)
+  | Proc (name, command) -> raise (TransitionError "ProcCalls not implemented")
 
-and eval_bool_expr stack heap = function
+(* Evalutates boolean expressions: Returns am OCaml bool value*)
+and eval_bool_expr stack heap = function 
   | Bool b -> b
   | Equals (e1, e2) ->
       (match eval_expr stack heap e1, eval_expr stack heap e2 with
        | VInt v1, VInt v2 -> v1 = v2
-       | _ -> raise (TransitionError "Equals: Operands must be integers"))
+       | VNull, VNull -> true
+       | VLoc v1, VLoc v2 -> v1 = v2
+       | VField v1, VField v2 -> v1 = v2
+       | VClosure v1, VClosure v2 -> compare_closure v1 v2
+       | v1, v2 -> raise (TransitionError (Printf.sprintf"Equals: Operands must be of the same type %s %s"(pretty_print_tainted_value v1) (pretty_print_tainted_value v2)) )
+      )
   | Lessthan (e1, e2) ->
       (match eval_expr stack heap e1, eval_expr stack heap e2 with
        | VInt v1, VInt v2 -> v1 < v2
-       | _ -> raise (TransitionError "Lessthan: Operands must be integers"))
+       | v1, v2 -> raise (TransitionError (Printf.sprintf "Lessthan: Operands must be integers: %s < %s" (pretty_print_tainted_value v1) (pretty_print_tainted_value v2)) )
+      )
 
 (* Evaluates commands *)
 and eval_cmd stack heap = function
-| VarDecl name -> declareVar name stack heap
+| VarDecl name -> declare_var stack heap name
 | ProcCall (f, y) -> raise (TransitionError "ProcCall not implemented")
-| AssignVal (e1, e2) -> raise (TransitionError "AssignVal not implemented")
-| Malloc name -> declareVar name stack heap
+(*Variable Assignments*)
+| AssignVal (e1, e2) -> 
+  let v = eval_expr stack heap e2 in
+  ( match e1 with
+    (*Field Assignments*)
+    | FieldAccess (obj, f) -> 
+      ( match eval_loc_expr stack heap obj, eval_expr stack heap f with
+        | VLoc l, VField f -> set_field heap l f v
+        | _ -> raise (TransitionError "Invalid Field Assignment Target")
+      )
+    (* Variable Assignments*)
+    | Variable x -> set_var_val stack heap x v
+    (* Invalid Assignments*)
+    | _ -> raise (TransitionError "Invalid Assignment Target")
+  )
+| Malloc name -> mallocVar name stack heap
 | Skip -> () (* No operation *)
 | Sequence commands -> eval_cmds stack heap commands
-| While (b, command) -> raise (TransitionError "While not implemented")
-| IfElse (b, cmd1, cmd2) -> raise (TransitionError "IfElse not implemented")
-| If (b, command) -> raise (TransitionError "If not implemented")
+| While (b, command) ->
+    while (eval_bool_expr stack heap b) do
+      eval_cmd (Hashtbl.copy stack) heap command
+    done
+| IfElse (b, cmd1, cmd2) -> 
+    if eval_bool_expr stack heap b 
+      then eval_cmd (Hashtbl.copy stack) heap cmd1
+      else eval_cmd (Hashtbl.copy stack) heap cmd2
+| If (b, command) -> 
+    if eval_bool_expr stack heap b then eval_cmd (Hashtbl.copy stack) heap command 
 | Parallel (cmds1, cmds2) -> raise (TransitionError "Parallel not implemented")
 | Atom commands -> eval_cmds stack heap commands
 

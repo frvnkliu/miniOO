@@ -56,12 +56,10 @@ try
         Printf.fprintf stderr "Static Semantics Error: %s\n" s;
         flush stderr;
         Lexing.flush_input lexbuf
-      (*
       | TransitionalSemantics.TransitionError s ->
         Printf.fprintf stderr "Transitional Semantics Error: %s\n" s;
         flush stderr;
         Lexing.flush_input lexbuf
-      *)
     in
     clear_parser()
   done

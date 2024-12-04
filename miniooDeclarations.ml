@@ -145,11 +145,11 @@ module TransitionDeclarations = struct
     | VLoc of int
     | VNull
     | VClosure of closure
-    | Error of string
 
   (* Heap Type: A hashtable mapping integers to tainted values *)
   type heap = (string, tainted_value) Hashtbl.t array
 
+  let compare_closure clos1 clos2=  false
   (* Print a single tainted_value *)
   let pretty_print_tainted_value tv =
     match tv with
@@ -158,13 +158,12 @@ module TransitionDeclarations = struct
     | VLoc addr -> Printf.sprintf "Loc(%d)" addr
     | VNull -> Printf.sprintf "vNull"
     | VClosure (name, cmds, values) -> Printf.sprintf "Closure(%s, \n%s,\n [])" name (pretty_print_cmds "-" cmds)
-    | Error msg -> Printf.sprintf "Error(%s)" msg
   
   let print_heap h =
     print_string "Heap:\n";
     Array.iteri
       (fun index hashtable ->
-        Printf.printf "Location %d:\n" index;
+        Printf.printf "  Location %d:\n" index;
         Hashtbl.iter
           (fun key value ->
             Printf.printf "  %s -> %s\n" key (pretty_print_tainted_value value))
@@ -177,4 +176,5 @@ module TransitionDeclarations = struct
       (fun key value -> 
         Printf.printf "  %s -> %d\n" key value
       ) s
+  
 end
