@@ -1,6 +1,7 @@
 %{ (* header *)
 
 open MiniooDeclarations
+open StaticSemantics
 
 %} /* declarations */
 
@@ -29,7 +30,7 @@ open MiniooDeclarations
 
 %% /* rules */
 prog :
-    cmds EOL    { $1 }
+    cmds EOL    {check_static_semantic_errors $1; $1 }
 	
 cmds :
     c = cmd SEMICOLON cs = cmds                             { (c :: cs) }

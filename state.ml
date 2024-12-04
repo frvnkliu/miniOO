@@ -10,11 +10,6 @@ type heap = symbTable list;;
 
 type symbSet = string list;;
 
-let progHeap = ref [];;
-
-let progStack = ref [];;
-
-
 (*Pretty Printing*)
 let print_stack() = print_string "hi, I am stack :3\n";;
 let print_heap() = print_string "hi, I am heap :P\n";;

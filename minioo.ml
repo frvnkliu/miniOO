@@ -21,8 +21,8 @@ try
     flush stdout;
     let () = 
       try
-        let commands =  MiniooMENHIR.prog MiniooLEX.token lexbuf in 
-        if !verbose then print_endline (pretty_print_cmds "" commands)
+        let commands =  MiniooMENHIR.prog MiniooLEX.token lexbuf in
+          if !verbose then print_endline (pretty_print_cmds "" commands);
       with
       MiniooLEX.TokenError c -> 
         Printf.fprintf stderr "Invalid Token: %c\n" c;
@@ -32,9 +32,13 @@ try
         let pos = Lexing.lexeme_start lexbuf in Printf.fprintf stderr "Syntax error at: %d\n" pos;
         flush stderr;
         Lexing.flush_input lexbuf
+      | StaticSemantics.StaticError s ->
+        Printf.fprintf stderr "Static Semantics Error: %s\n" s;
+        flush stderr;
+        Lexing.flush_input lexbuf
     in
     clear_parser()
   done
 with MiniooLEX.Eof ->
-  print_endline "End of File"
+  ()
 ;;
