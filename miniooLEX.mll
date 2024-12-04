@@ -33,7 +33,8 @@ rule token = parse
   | ';'        { SEMICOLON }
   | "|||"	   { PARALLEL }
   | "=="       { LEQUALS }
-  | ':' | '='  { ASSIGN }
+  | ':'        { COLON}
+  | '='        { ASSIGN }
   | '-'        { MINUS }
   | '.'        { DOT }
   | '<'        { LESSTHAN }

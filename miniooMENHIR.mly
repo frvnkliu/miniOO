@@ -6,7 +6,7 @@ open StaticSemantics
 %} /* declarations */
 
 /* lexer tokens */
-%token EOL EOF SEMICOLON ASSIGN MALLOC
+%token EOL EOF SEMICOLON ASSIGN COLON MALLOC
 %token SKIP IF ELSE THEN WHILE
 %token VAR
 %token ATOM NULL PROC PARALLEL
@@ -30,7 +30,7 @@ open StaticSemantics
 
 %% /* rules */
 prog :
-    cmds EOL    {check_static_semantic_errors $1; $1 }
+    cmds EOL    {$1}
 	
 cmds :
     c = cmd SEMICOLON cs = cmds                             { (c :: cs) }
@@ -64,6 +64,6 @@ expr:
     | NULL                                  { Null }
     | x = VARIABLE                          { Variable x }
     | e1 = expr DOT e2 = expr               { FieldAccess(e1, e2) }
-    | PROC x = VARIABLE ASSIGN c = cmd      { Proc(x, c) }
+    | PROC y = VARIABLE COLON c = cmd      { Proc(y, c) }
     
 %% (* trailer *)
