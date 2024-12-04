@@ -4,81 +4,72 @@ exception StaticError of string
 
 (*How the fuck do i do this*)
 
-(* Returns boolean value representing scoping errors or not*)
-(*References to lists, every time a new scope is created make a copy*)
-let rec check_static_expr v = function
-  | Field name -> "" (* No error for fields *)
-  | Num value -> "" (* No error for numbers *)
-  | Minus (e1, e2) -> 
-      let err1 = check_static_expr v e1 in
-      if err1 <> "" then err1
-      else check_static_expr v e2
-  | Null -> "" (* No error for null *)
-  | Variable name -> 
-      if List.mem_assoc name !v then "" 
-      else name (* Return the name if it's not in scope *)
-  | FieldAccess (e1, e2) -> 
-      let err1 = check_static_expr v e1 in
-      if err1 <> "" then err1
-      else check_static_expr v e2
-  | Proc (name, command) -> 
-      check_static_cmd (ref ((name, -1) :: !v)) command
-
-and check_static_bool_expr v = function
-  | Bool b -> "" (* No error for boolean literals *)
-  | Equals (e1, e2) -> 
-      let err1 = check_static_expr v e1 in
-      if err1 <> "" then err1
-      else check_static_expr v e2
-  | Lessthan (e1, e2) -> 
-      let err1 = check_static_expr v e1 in
-      if err1 <> "" then err1
-      else check_static_expr v e2
-
-and check_static_cmd v = function
-  | VarDecl name -> v := (name, -1) :: !v; "" (* Declare variable, no error *)
-  | ProcCall (f, y) -> 
-      let err1 = check_static_expr v f in
-      if err1 <> "" then err1
-      else check_static_expr v y
-  | AssignVal (e1, e2) -> 
-      let err1 = check_static_expr v e1 in
-      if err1 <> "" then err1
-      else check_static_expr v e2
-  | Malloc name -> 
-      if List.mem_assoc name !v then "" 
-      else name (* Return the name if it's not in scope *)
-  | Skip -> "" (* No error for skip *)
-  | Sequence commands -> check_static_cmds v commands
-  | While (b, command) -> 
-      let err1 = check_static_bool_expr v b in
-      if err1 <> "" then err1
-      else check_static_cmd (ref (!v)) command
-  | IfElse (b, cmd1, cmd2) -> 
-      let err1 = check_static_bool_expr v b in
-      if err1 <> "" then err1
-      else
-        let err2 = check_static_cmd (ref (!v)) cmd1 in
-        if err2 <> "" then err2
-        else check_static_cmd (ref (!v)) cmd2
-  | If (b, command) -> 
-      let err1 = check_static_bool_expr v b in
-      if err1 <> "" then err1
-      else check_static_cmd (ref (!v)) command
-  | Parallel (cmds1, cmds2) -> 
-      let err1 = check_static_cmds (ref (!v)) cmds1 in
-      if err1 <> "" then err1
-      else check_static_cmds (ref (!v)) cmds2
-  | Atom commands -> check_static_cmds v commands
-
-and check_static_cmds v = function
-  | [] -> "" (* No error for an empty list of commands *)
-  | cmd :: cmds -> 
-      let err = check_static_cmd v cmd in
-      if err <> "" then err
-      else check_static_cmds v cmds
-
-let check_static_semantic_errors stack commands =
-  let scoping = check_static_cmds (ref stack) commands in
-  if scoping <> "" then
-    raise (StaticError ("Scoping Error: " ^ scoping))
+(* Helper function to raise an error if a variable is not in scope *)
+  let ensure_in_scope stack name =
+    if not (Hashtbl.mem stack name) then
+      raise (StaticError ("Scoping Error: Variable " ^ name ^ " is not in scope"))
+  
+  (* Expression checking *)
+  let rec check_static_expr stack = function
+    | Variable name -> ensure_in_scope stack name
+    | Minus (e1, e2) ->
+        check_static_expr stack e1;
+        check_static_expr stack e2
+    | FieldAccess (e1, e2) ->
+        check_static_expr stack e1;
+        check_static_expr stack e2
+    | Proc (name, command) ->
+        let new_stack = Hashtbl.copy stack in
+        Hashtbl.replace new_stack name (-1); (* Add procedure to the new scope *)
+        check_static_cmd new_stack command
+    | _ -> () (* Catch-all for cases that do nothing *)
+  
+  (* Boolean expression checking *)
+  and check_static_bool_expr stack = function
+    | Equals (e1, e2) ->
+        check_static_expr stack e1;
+        check_static_expr stack e2
+    | Lessthan (e1, e2) ->
+        check_static_expr stack e1;
+        check_static_expr stack e2
+    | _ -> () (* Catch-all for cases that do nothing *)
+  
+  (* Command checking *)
+  and check_static_cmd stack = function
+    | VarDecl name ->
+        Hashtbl.replace stack name (-1) (* Declare variable in the current scope *)
+    | ProcCall (f, y) ->
+        check_static_expr stack f;
+        check_static_expr stack y
+    | AssignVal (e1, e2) ->
+        check_static_expr stack e1;
+        check_static_expr stack e2
+    | Malloc name ->
+        ensure_in_scope stack name
+    | Sequence commands -> check_static_cmds stack commands
+    | While (b, command) ->
+        check_static_bool_expr stack b;
+        check_static_cmd (Hashtbl.copy stack) command
+    | IfElse (b, cmd1, cmd2) ->
+        check_static_bool_expr stack b;
+        check_static_cmd (Hashtbl.copy stack) cmd1;
+        check_static_cmd (Hashtbl.copy stack) cmd2
+    | If (b, command) ->
+        check_static_bool_expr stack b;
+        check_static_cmd (Hashtbl.copy stack) command
+    | Parallel (cmds1, cmds2) ->
+        check_static_cmds (Hashtbl.copy stack) cmds1;
+        check_static_cmds (Hashtbl.copy stack) cmds2
+    | Atom commands -> check_static_cmds stack commands
+    | _ -> () (* Catch-all for cases that do nothing *)
+  
+  (* List of commands checking *)
+  and check_static_cmds stack = function
+    | [] -> () (* No error for an empty list of commands *)
+    | cmd :: cmds ->
+        check_static_cmd stack cmd;
+        check_static_cmds stack cmds
+  
+  (* Main function to check for static semantic errors *)
+  let check_static_semantic_errors stack commands =
+    check_static_cmds (Hashtbl.copy stack) commands

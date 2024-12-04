@@ -1,7 +1,5 @@
 open Parsing
 open MiniooDeclarations
-open MiniooMENHIR
-
 (* Command Line Arguments*)
 let usage_msg = "Usage: ./parser [-v | -verbose]"
 
@@ -14,36 +12,29 @@ let options = [("-v", Arg.Set verbose, "Output AST");("-verbose", Arg.Set verbos
 let () = Arg.parse options anon_arg_handler usage_msg;;
 
 (* State *)
-let stack = ref ([] : (string*int) list);;
+let stack = (Hashtbl.create 10 : TransitionDeclarations.stack);;
 
-let print_stack() =
-print_string "Stack: ";
-match !stack with
-  | [] -> Printf.printf "Empty\n"
-  | contents ->
-      List.iter
-        (fun (name, value) -> Printf.printf "(%s, %d) " name value)
-        contents;
-      Printf.printf "\n"
-let print_heap() = print_string "hi, I am heap :P\n";;
+let heap = ref([||] : TransitionDeclarations.heap);;
 
-let print_state() = 
-  print_endline "\n=== State at end of program ===";
-  print_stack();
-  print_heap();;
+let print_state ()= 
+  print_endline "\n=== State ===";
+  TransitionDeclarations.print_stack stack;
+  TransitionDeclarations.print_heap !heap
 
 (* Command Execution *)
 let run_commands commands =
   (* Print the AST if verbose*)
   if !verbose then print_endline (pretty_print_cmds "" commands);
   (* Check static semantics*)
-  StaticSemantics.check_static_semantic_errors !stack commands;;
-
+  StaticSemantics.check_static_semantic_errors stack commands;
+  (* Transitional Semantics *)
+  TransitionalSemantics.eval_commands stack heap commands;
+  if !verbose then print_state();;
 
 (* Signals *)
-Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _signum -> raise MiniooLEX.Eof));;
+Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _signum -> raise MiniooLEX.Eof));
 
-print_endline (Printf.sprintf "minioo (Verbose = %b)" !verbose );;
+print_endline (Printf.sprintf "minioo (Verbose = %b)" !verbose );
 try
   let lexbuf = Lexing.from_channel stdin in
   while true do
@@ -65,9 +56,15 @@ try
         Printf.fprintf stderr "Static Semantics Error: %s\n" s;
         flush stderr;
         Lexing.flush_input lexbuf
+      (*
+      | TransitionalSemantics.TransitionError s ->
+        Printf.fprintf stderr "Transitional Semantics Error: %s\n" s;
+        flush stderr;
+        Lexing.flush_input lexbuf
+      *)
     in
     clear_parser()
   done
-with MiniooLEX.Eof ->
-  if !verbose then print_state()
-;;
+with MiniooLEX.Eof -> 
+  print_endline "exit"
+;

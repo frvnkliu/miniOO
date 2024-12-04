@@ -128,10 +128,53 @@ and pretty_print_cmds offset commands =
     offset
     (String.concat ",\n" command_strings)
     offset
+;;
 
-(* Transitional Type Declarations*)
-type stack = (string*int) list;;
+(* Transitional Type Declarations *)
+module TransitionDeclarations = struct
+  (* Stack Type: Maps strings to integers *)
+  type stack = (string, int) Hashtbl.t
 
-type closure = (Variable * cmds * stack);;
+  (* Closure Type: Encapsulates commands and a stack *)
+  type closure = (string * cmds * stack)
 
-type heap = Hashtbl;;
+  (* Tainted Value Type: Represents runtime values and errors *)
+  type tainted_value =
+    | VField of string
+    | VInt of int
+    | VLoc of int
+    | VNull
+    | VClosure of closure
+    | Error of string
+
+  (* Heap Type: A hashtable mapping integers to tainted values *)
+  type heap = (string, tainted_value) Hashtbl.t array
+
+  (* Print a single tainted_value *)
+  let pretty_print_tainted_value tv =
+    match tv with
+    | VField name -> Printf.sprintf "Field(%s)" name
+    | VInt value -> Printf.sprintf "Int(%d)" value
+    | VLoc addr -> Printf.sprintf "Loc(%d)" addr
+    | VNull -> Printf.sprintf "vNull"
+    | VClosure (name, cmds, values) -> Printf.sprintf "Closure(%s, \n%s,\n [])" name (pretty_print_cmds "-" cmds)
+    | Error msg -> Printf.sprintf "Error(%s)" msg
+  
+  let print_heap h =
+    print_string "Heap:\n";
+    Array.iteri
+      (fun index hashtable ->
+        Printf.printf "Location %d:\n" index;
+        Hashtbl.iter
+          (fun key value ->
+            Printf.printf "  %s -> %s\n" key (pretty_print_tainted_value value))
+          hashtable)
+      h
+
+  let print_stack s =
+    print_string "Stack: \n";
+    Hashtbl.iter 
+      (fun key value -> 
+        Printf.printf "  %s -> %d\n" key value
+      ) s
+end

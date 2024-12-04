@@ -8,6 +8,10 @@ all: delete
 	cat staticSemantics.ml
 	ocamlc -c staticSemantics.ml
 
+	@echo "# Transitional semantics:"
+	cat transitionalSemantics.ml
+	ocamlc -c transitionalSemantics.ml
+
 	@echo "# Lexer specification:"
 	cat miniooLEX.mll
 	ocamllex miniooLEX.mll
@@ -35,10 +39,10 @@ all: delete
 	ocamlc -c minioo.ml
 
 	@echo "# Linking of compiled files the type declaration, lexer, parser & minioo"
-	ocamlc -o minioo miniooDeclarations.cmo staticSemantics.cmo miniooLEX.cmo miniooMENHIR.cmo minioo.cmo
+	ocamlc -o minioo miniooDeclarations.cmo staticSemantics.cmo transitionalSemantics.cmo miniooLEX.cmo miniooMENHIR.cmo minioo.cmo
 
 	@echo "# Using minioo:"
-	@echo ./minioo -v < examples/prog1.moo
+	echo ./minioo -v < examples/prog1.moo
 
 delete:
 	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~
