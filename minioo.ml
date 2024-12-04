@@ -19,6 +19,7 @@ let heap = ref([||] : TransitionDeclarations.heap);;
 let print_state ()= 
   print_endline "\n=== State ===";
   TransitionDeclarations.print_stack stack;
+  print_endline "-------------";
   TransitionDeclarations.print_heap !heap
 
 (* Command Execution *)

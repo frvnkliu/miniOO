@@ -42,7 +42,7 @@ all: delete
 	ocamlc -o minioo miniooDeclarations.cmo staticSemantics.cmo transitionalSemantics.cmo miniooLEX.cmo miniooMENHIR.cmo minioo.cmo
 
 	@echo "# Using minioo:"
-	echo ./minioo -v < examples/prog1.moo
+	./minioo -v < examples/prog1.moo
 
 delete:
 	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~

@@ -136,7 +136,7 @@ module TransitionDeclarations = struct
   type stack = (string, int) Hashtbl.t
 
   (* Closure Type: Encapsulates commands and a stack *)
-  type closure = (string * cmds * stack)
+  type closure = (string * cmd * stack)
 
   (* Tainted Value Type: Represents runtime values and errors *)
   type tainted_value =
@@ -149,7 +149,11 @@ module TransitionDeclarations = struct
   (* Heap Type: A hashtable mapping integers to tainted values *)
   type heap = (string, tainted_value) Hashtbl.t array
 
-  let compare_closure clos1 clos2=  false
+  let pretty_print_stack stack =
+    let entries = Hashtbl.fold (fun key value acc ->
+      Printf.sprintf "%s->%d" key value :: acc
+    ) stack [] in
+    Printf.sprintf "Stack: [%s]" (String.concat ", " (List.rev entries))
   (* Print a single tainted_value *)
   let pretty_print_tainted_value tv =
     match tv with
@@ -157,24 +161,74 @@ module TransitionDeclarations = struct
     | VInt value -> Printf.sprintf "Int(%d)" value
     | VLoc addr -> Printf.sprintf "Loc(%d)" addr
     | VNull -> Printf.sprintf "vNull"
-    | VClosure (name, cmds, values) -> Printf.sprintf "Closure(%s, \n%s,\n [])" name (pretty_print_cmds "-" cmds)
+    | VClosure (name, cmd, s) -> Printf.sprintf "Closure(%s, %s, %s)" name (pretty_print_cmd "" cmd)  (pretty_print_stack s)
   
   let print_heap h =
-    print_string "Heap:\n";
+    print_string "===Heap===\n";
     Array.iteri
       (fun index hashtable ->
-        Printf.printf "  Location %d:\n" index;
+        Printf.printf "Location %d:\n" index;
         Hashtbl.iter
           (fun key value ->
-            Printf.printf "  %s -> %s\n" key (pretty_print_tainted_value value))
+            Printf.printf "%s -> %s\n" key (pretty_print_tainted_value value))
           hashtable)
       h
 
   let print_stack s =
-    print_string "Stack: \n";
-    Hashtbl.iter 
-      (fun key value -> 
-        Printf.printf "  %s -> %d\n" key value
-      ) s
+    print_endline (pretty_print_stack s)
+
+
+  let rec compare_cmds cmd1 cmd2 =
+    match cmd1, cmd2 with
+    | VarDecl s1, VarDecl s2 -> s1 = s2
+    | ProcCall (e1, e2), ProcCall (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | AssignVal (e1, e2), AssignVal (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | Malloc s1, Malloc s2 -> s1 = s2
+    | Skip, Skip -> true
+    | Sequence cmds1, Sequence cmds2 -> compare_cmds_list cmds1 cmds2
+    | While (b1, c1), While (b2, c2) -> compare_bool_exprs b1 b2 && compare_cmds c1 c2
+    | IfElse (b1, c1, c2), IfElse (b2, c3, c4) -> 
+        compare_bool_exprs b1 b2 && compare_cmds c1 c3 && compare_cmds c2 c4
+    | If (b1, c1), If (b2, c2) -> compare_bool_exprs b1 b2 && compare_cmds c1 c2
+    | Parallel (cmds1, cmds2), Parallel (cmds3, cmds4) -> 
+        compare_cmds_list cmds1 cmds3 && compare_cmds_list cmds2 cmds4
+    | Atom cmds1, Atom cmds2 -> compare_cmds_list cmds1 cmds2
+    | _, _ -> false (* Different constructors *)
   
+  and compare_cmds_list cmds1 cmds2 =
+    List.length cmds1 = List.length cmds2 && List.for_all2 compare_cmds cmds1 cmds2
+  
+  and compare_exprs e1 e2 =
+    match e1, e2 with
+    | Field s1, Field s2 -> s1 = s2
+    | Num v1, Num v2 -> v1 = v2
+    | Minus (e1, e2), Minus (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | Null, Null -> true
+    | Variable s1, Variable s2 -> s1 = s2
+    | FieldAccess (e1, e2), FieldAccess (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | Proc (s1, c1), Proc (s2, c2) -> s1 = s2 && compare_cmds c1 c2
+    | _, _ -> false (* Different constructors *)
+  
+  and compare_bool_exprs b1 b2 =
+    match b1, b2 with
+    | Bool v1, Bool v2 -> v1 = v2
+    | Equals (e1, e2), Equals (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | Lessthan (e1, e2), Lessthan (e1', e2') -> compare_exprs e1 e1' && compare_exprs e2 e2'
+    | _, _ -> false (* Different constructors *)
+  
+  let compare_stacks s1 s2 =
+    (* Ensure both stacks have the same size *)
+    if Hashtbl.length s1 <> Hashtbl.length s2 then false
+    else
+      try
+        Hashtbl.iter (fun key value ->
+          match Hashtbl.find_opt s2 key with
+          | Some v -> if v <> value then raise Exit
+          | None -> raise Exit
+        ) s1;
+        true
+      with Exit -> false
+  
+  let compare_closure (name1, cmd1, stack1) (name2, cmd2, stack2) =
+    name1 = name2 && compare_cmds cmd1 cmd2 && compare_stacks stack1 stack2
 end
