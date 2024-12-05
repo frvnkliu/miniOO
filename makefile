@@ -54,4 +54,4 @@ all: delete
 	./minioo -vv < examples/prog3.moo
 
 delete:
-	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~
+	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml miniooMENHIR.conflicts makefile~
