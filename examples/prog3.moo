@@ -1,1 +1,4 @@
-var P; P = proc Y:if Y < 1 then P = 1 else P(Y - 1); P(1)
+var X; malloc(X)
+X.c = 0
+X.f = proc Y:if Y < 1 then X.r = X.c else X.f(Y - 1) 
+X.f(2) 

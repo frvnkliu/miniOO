@@ -31,6 +31,7 @@ open StaticSemantics
 %% /* rules */
 prog :
     cmds EOL    {$1}
+    | EOL       {[]}
 	
 cmds :
     c = cmd SEMICOLON cs = cmds                             { (c :: cs) }

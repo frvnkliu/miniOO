@@ -21,7 +21,7 @@ all: delete
 	cat miniooMENHIR.mly
 
 	@echo "# Parser creation:"
-	menhir --explain miniooMENHIR.mly
+	menhir miniooMENHIR.mly
 	ls
 
 	@echo "# types of values returned by lexems:"
@@ -41,8 +41,17 @@ all: delete
 	@echo "# Linking of compiled files the type declaration, lexer, parser & minioo"
 	ocamlc -o minioo miniooDeclarations.cmo staticSemantics.cmo transitionalSemantics.cmo miniooLEX.cmo miniooMENHIR.cmo minioo.cmo
 
-	@echo "# Using minioo:"
-	./minioo -v < examples/prog1.moo
+	@echo "===== Using minioo: ====="
+	@echo "# Example 1"
+	./minioo < examples/prog1.moo
+	@echo "# Example 2"
+	./minioo < examples/prog2.moo
+	@echo "# Example 3"
+	./minioo < examples/prog3.moo
+	@echo "# Example 2 With Verbose Flag"
+	./minioo -v < examples/prog2.moo
+	@echo "# Example 2 With VVerbose Flag"
+	./minioo -v < examples/prog2.moo
 
 delete:
 	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~
