@@ -2,7 +2,7 @@
 open MiniooDeclarations
 exception StaticError of string
 
-(*How the fuck do i do this*)
+(*How do i do this*)
 
 (* Helper function to raise an error if a variable is not in scope *)
   let ensure_in_scope stack name =

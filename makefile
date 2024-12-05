@@ -50,8 +50,8 @@ all: delete
 	./minioo < examples/prog3.moo
 	@echo "# Example 2 With Verbose Flag"
 	./minioo -v < examples/prog2.moo
-	@echo "# Example 2 With VVerbose Flag"
-	./minioo -v < examples/prog2.moo
+	@echo "# Example 3 With VVerbose Flag"
+	./minioo -vv < examples/prog3.moo
 
 delete:
 	/bin/rm -f minioo *.cmi *.cmo miniooLEX.ml miniooMENHIR.mli miniooMENHIR.ml makefile~

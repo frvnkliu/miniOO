@@ -1,1 +1,1 @@
-var X; X = 1
+var R; var H; H=1; var P; P = proc Y: R = Y-H; var H; H = 2; P(4)

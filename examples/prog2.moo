@@ -1,1 +1,1 @@
-var R; var H; H=1; var P; P = proc Y: R = Y-H; var H; H = 2; P(4)
+var P; P = proc Y: if Y < 1 then P = 1 else P(Y - 1); P(1)

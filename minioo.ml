@@ -9,7 +9,7 @@ let verbose = ref false;;
 
 let vverbose = ref false;;
 
-let options = [("-v", Arg.Set verbose, "Output AST at each step + State at End");("-vv", Arg.Set vverbose, "Output AST + State at each Step")]
+let options = [("-v", Arg.Set verbose, "Output AST at each step and State at end of program");("-vv", Arg.Set vverbose, "Output AST and State at each Step and final State at the end of program")]
 
 let () = Arg.parse options anon_arg_handler usage_msg;;
 
@@ -28,7 +28,7 @@ let print_state ()=
 (* Main Function Command Execution *)
 let run_commands commands =
   (* Print the AST if verbose*)
-  if !vverbose then print_endline ( "\n===AST===\n"^pretty_print_cmds "" commands);
+  if !verbose || !vverbose then print_endline ( "\n===AST===\n"^pretty_print_cmds "" commands);
   (* Check static semantics*)
   StaticSemantics.check_static_semantic_errors stack commands;
   (* Transitional Semantics *)
